@@ -16,6 +16,9 @@ import { TransactionConfirmationModal } from './TransactionConfirmationModal';
 import { QuoteStreamStatusIndicator } from './QuoteStreamStatusIndicator';
 import { SessionRecoveryModal } from './SessionRecoveryModal';
 import { useSwapState } from '@/hooks/useSwapState';
+import { useOptimisticSwap } from '@/hooks/useOptimisticSwap';
+import type { PreSubmitSnapshot } from '@/types/transaction';
+import { useOptionalTradingPair } from '@/contexts/TradingPairContext';
 import { useExpertSettings } from '@/hooks/useExpertSettings';
 import { useOptimisticSwap } from '@/hooks/useOptimisticSwap';
 import type { PreSubmitSnapshot } from '@/types/transaction';
@@ -44,6 +47,8 @@ import {
 export function SwapCard() {
   const { t } = useSwapI18n();
   const { isCompact, toggleCompact } = useCompactMode();
+  const tradingPairContext = useOptionalTradingPair();
+  
   // Wrap useSearchParams in try-catch for SSR
   let parseParams: ReturnType<typeof useShareableQuote>['parseParams'] | null =
     null;
@@ -84,6 +89,35 @@ export function SwapCard() {
     reset,
   } = useSwapState();
 
+  // Initialize from URL parameters on mount
+  useEffect(() => {
+    if (!parseParams) return;
+    
+    const urlParams = parseParams();
+    if (!urlParams) return;
+
+    // Apply URL parameters to form state
+    if (urlParams.from && urlParams.from !== fromToken) {
+      setFromToken(urlParams.from);
+    }
+    if (urlParams.to && urlParams.to !== toToken) {
+      setToToken(urlParams.to);
+    }
+    if (urlParams.amount && urlParams.amount !== fromAmount) {
+      setFromAmount(urlParams.amount);
+    }
+    if (urlParams.slippage && parseFloat(urlParams.slippage) !== slippage) {
+      setSlippage(parseFloat(urlParams.slippage));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parseParams]); // Only run on mount when parseParams becomes available
+
+  // Update trading pair context when tokens change
+  useEffect(() => {
+    if (tradingPairContext && fromToken && toToken) {
+      tradingPairContext.setTradingPair(fromToken, toToken);
+    }
+  }, [fromToken, toToken, tradingPairContext]);
   const {
     expertMode,
     bypassConfirmation,
