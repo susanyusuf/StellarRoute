@@ -13,21 +13,18 @@ type Props = {
 
 export default function PriceSparkline({ data }: Props) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="text-xs text-muted-foreground">
-        No price data (24h)
-      </div>
-    );
-  }
+  const displayData = useMemo(() => data ?? [], [data]);
 
   // ✅ Limit points for performance
-  const sliced = useMemo(() => data.slice(-50), [data]);
+  const sliced = useMemo(() => displayData.slice(-50), [displayData]);
 
   const { points, normalized } = useMemo(() => {
-    const max = Math.max(...sliced.map(d => d.price));
-    const min = Math.min(...sliced.map(d => d.price));
+    if (sliced.length === 0) {
+      return { points: "", normalized: [] as Array<PricePoint & { x: number; y: number }> };
+    }
+
+    const max = Math.max(...sliced.map((d) => d.price));
+    const min = Math.min(...sliced.map((d) => d.price));
 
     const normalized = sliced.map((d, i) => {
       const x = (i / (sliced.length - 1)) * 100;
@@ -43,6 +40,14 @@ export default function PriceSparkline({ data }: Props) {
 
     return { points, normalized };
   }, [sliced]);
+
+  if (sliced.length === 0) {
+    return (
+      <div className="text-xs text-muted-foreground">
+        No price data (24h)
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

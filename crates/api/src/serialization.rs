@@ -14,8 +14,7 @@ pub trait DeterministicSerialize: Serialize + for<'de> Deserialize<'de> + Sized 
         let value = serde_json::to_value(self)?;
         let normalized = Self::normalize_value(value);
         let mut buf = Vec::new();
-        let mut serializer = serde_json::Serializer::new(&mut buf);
-        serde_json::to_writer(&mut serializer, &normalized)?;
+        serde_json::to_writer(&mut buf, &normalized)?;
         Ok(buf)
     }
 

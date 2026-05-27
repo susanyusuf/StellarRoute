@@ -112,6 +112,6 @@ export function useQuote({ fromToken, toToken, amount, type = 'sell' }: UseQuote
     cancelRetry,
     refresh,
     data,
-    lastQuotedAtMs: data ? (data.timestamp ?? Date.now()) : null,
+    lastQuotedAtMs: data ? data.timestamp ?? null : null,
   };
 }

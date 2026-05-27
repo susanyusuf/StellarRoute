@@ -142,7 +142,8 @@ pub async fn get_quote(
         )
         .await
         {
-            Ok((quote_resp, cache_hit)) => {
+            Ok((prepared_quote_resp, cache_hit)) => {
+                let quote_resp = prepared_quote_resp.into_quote()?;
                 let error_class = "none";
                 let latency_ms = start_time.elapsed().as_millis() as u64;
 
@@ -449,7 +450,13 @@ pub async fn get_batch_quotes(
                 };
 
                 match get_quote_inner(state, base_asset, quote_asset, params, false).await {
-                    Ok((quote, _cache_hit)) => BatchQuoteItemResult::ok(i, quote),
+                    Ok((prepared_quote, _cache_hit)) => match prepared_quote.into_quote() {
+                        Ok(quote) => BatchQuoteItemResult::ok(i, quote),
+                        Err(e) => {
+                            let (code, message) = batch_error_from_api_error(&e);
+                            BatchQuoteItemResult::err(i, BatchItemError { code, message })
+                        }
+                    },
                     Err(e) => {
                         let (code, message) = batch_error_from_api_error(&e);
                         BatchQuoteItemResult::err(i, BatchItemError { code, message })
@@ -856,7 +863,7 @@ async fn find_best_price(
     );
 
     let fetch_result = fetch_guard.complete();
-    budget_tracker.record(PipelineStage::FetchCandidates, fetch_result);
+    budget_tracker.record(PipelineStage::FetchCandidates, fetch_result.clone());
     state
         .timeout_controller
         .record_latency(fetch_result.duration());
